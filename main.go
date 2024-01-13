@@ -104,7 +104,7 @@ type Stock struct {
 	Price  float64 `json:"price"`
 	Volume int32   `json:"volume"`
 }
-d 
+
 func main() {
 	cfgFile, _ := os.Open("config-test/client.cfg")
 	defer cfgFile.Close()
