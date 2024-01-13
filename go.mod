@@ -1,6 +1,6 @@
-module proj1
+module gofix
 
-go 1.21.5
+go 1.21.6
 
 require github.com/quickfixgo/quickfix v0.9.0
 

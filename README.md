@@ -7,6 +7,6 @@
 
 run the program temporarily: `go run .`
 
-build the program: `go build -o gofix.exe`
+build the program: `go build`
 
-build with smaller binary size: `go build -o gofix.exe -ldflags="-s -w"`
+build with smaller binary size: `go build -ldflags="-s -w"`
