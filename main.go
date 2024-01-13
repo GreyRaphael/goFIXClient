@@ -106,7 +106,7 @@ type Stock struct {
 }
 
 func main() {
-	cfgFile, _ := os.Open("config-test/client.cfg")
+	cfgFile, _ := os.Open("config/test/dev.cfg")
 	defer cfgFile.Close()
 	cfgString, _ := io.ReadAll(cfgFile)
 	appSettings, _ := quickfix.ParseSettings(bytes.NewReader(cfgString))
