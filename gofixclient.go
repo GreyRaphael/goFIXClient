@@ -7,7 +7,6 @@ import (
 	"io"
 	"os"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
@@ -66,16 +65,18 @@ func (e *TradeClient) FromApp(msg *quickfix.Message, sessionID quickfix.SessionI
 
 func (e *TradeClient) SendOrder(direction string, secucode string, volume int32, price float64) {
 	codeinfo := strings.Split(secucode, ".")
-	ClOrdID := field.NewClOrdID(strconv.Itoa(int(time.Now().UnixMicro())))
+	now := time.Now()
+
+	ClOrdID := field.NewClOrdID(now.Format("235959.999999"))                                                // time as orderid
 	HandInst := field.NewHandlInst(enum.HandlInst_AUTOMATED_EXECUTION_ORDER_PRIVATE_NO_BROKER_INTERVENTION) // "1"
 	Symbol := field.NewSymbol(codeinfo[0])
 	Side := field.NewSide(enum.Side(direction)) // 1 buy, 2 sell
-	TransactionTime := field.NewTransactTime(time.Now())
+	TransactionTime := field.NewTransactTime(now)
 	OrdType := field.NewOrdType(enum.OrdType_LIMIT) // "2"
 
 	order := newordersingle.New(ClOrdID, HandInst, Symbol, Side, TransactionTime, OrdType)
-	order.SetOrderQty(decimal.NewFromInt32(volume), 2)
-	order.SetPrice(decimal.NewFromFloat(price), 2)
+	order.SetOrderQty(decimal.NewFromInt32(volume), 0)
+	order.SetPrice(decimal.NewFromFloat(price), 2) // scale小数点后2位
 	order.SetAccount(e.account_id)
 	order.SetCurrency("CNY")
 	order.SetSecurityType(enum.SecurityType_COMMON_STOCK) // "CS"
