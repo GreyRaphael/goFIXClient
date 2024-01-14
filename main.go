@@ -10,8 +10,9 @@ import (
 func main() {
 	client := TradeClient{ConfigFilename: "clients/test/dev.cfg"}
 	client.Start()
+
+	fmt.Println("cmds: exit, o:order, s:strategy, b:basket, l:orderlist, c:cancel_all")
 	scanner := bufio.NewScanner(os.Stdin)
-	fmt.Println("cmds: exit, o:order, s:strategy, b:basket, l:orderlist")
 	for scanner.Scan() {
 		switch scanner.Text() {
 		case "exit":
@@ -26,12 +27,15 @@ func main() {
 			}
 		case "b":
 			client.SendBasket("1", "input/zz500.csv", 1)
-			time.Sleep(time.Second)
-			client.CancelAll()
+			// time.Sleep(time.Second)
+			// client.CancelAll()
 		case "l":
 			client.SendOrderList("order_list1")
+		case "c":
+			client.CancelAll()
 		}
+
 		time.Sleep(time.Second * 3)
-		fmt.Println("cmds: exit, o:order, s:strategy, b:basket, l:orderlist")
+		fmt.Println("cmds: exit, o:order, s:strategy, b:basket, l:orderlist, c:cancel_all")
 	}
 }
