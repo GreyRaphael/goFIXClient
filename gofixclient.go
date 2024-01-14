@@ -57,27 +57,37 @@ func (e *TradeClient) ToAdmin(msg *quickfix.Message, sessionID quickfix.SessionI
 
 // ToApp implemented as part of Application interface
 func (e *TradeClient) ToApp(msg *quickfix.Message, sessionID quickfix.SessionID) (err error) {
-	fmt.Println("APP SEND: ", strings.ReplaceAll(msg.String(), string(rune(1)), "|"))
+	var msg_type field.MsgTypeField
+	msg.Header.Get(&msg_type)
+	if msg_type.String() == "D" {
+		fmt.Println("APP SEND:", strings.ReplaceAll(msg.String(), string(rune(1)), "|"))
+
+		var order_id field.ClOrdIDField
+		msg.Body.Get(&order_id)
+		e.order_sets[order_id.String()] = true
+	} else if msg_type.String() == "F" {
+		fmt.Println("APP CANCEL:", strings.ReplaceAll(msg.String(), string(rune(1)), "|"))
+
+		var orig_order_id field.OrigClOrdIDField
+		msg.Body.Get(&orig_order_id)
+		delete(e.order_sets, orig_order_id.String())
+	} else {
+		fmt.Println("APP SEND:", strings.ReplaceAll(msg.String(), string(rune(1)), "|"))
+	}
+	// fmt.Println("===>available order ids:", e.order_sets)
 	return
 }
 
 // FromApp implemented as part of Application interface. This is the callback for all Application level messages from the counter party.
 func (e *TradeClient) FromApp(msg *quickfix.Message, sessionID quickfix.SessionID) (reject quickfix.MessageRejectError) {
 	fmt.Println("APP RECV: ", strings.ReplaceAll(msg.String(), string(rune(1)), "|"))
-	var orderid field.ClOrdIDField
-
-	if reject = msg.Body.Get(&orderid); reject != nil {
-		return
-	}
-	e.order_sets[orderid.String()] = true
-
 	return
 }
 
 func (e *TradeClient) SendOrder(direction string, secucode string, volume int32, price float64) string {
 	codeinfo := strings.Split(secucode, ".")
 	now := time.Now()
-	orderid := now.Format("235959.999999")
+	orderid := now.Format("235959.999999999")
 
 	ClOrdID := field.NewClOrdID(orderid)                                                                    // time as orderid
 	HandInst := field.NewHandlInst(enum.HandlInst_AUTOMATED_EXECUTION_ORDER_PRIVATE_NO_BROKER_INTERVENTION) // "1"
@@ -107,7 +117,7 @@ func (e *TradeClient) SendOrderList(listid string) {
 		noorders := gp.Add()
 		now := time.Now()
 
-		noorders.SetClOrdID(now.Format("235959.999999"))
+		noorders.SetClOrdID(now.Format("235959.999999999"))
 		noorders.SetHandlInst(enum.HandlInst_AUTOMATED_EXECUTION_ORDER_PRIVATE_NO_BROKER_INTERVENTION)
 		noorders.SetSymbol("688009")
 		noorders.SetSide(enum.Side("1"))
@@ -138,7 +148,7 @@ func (e *TradeClient) CancelOrder(origid string) {
 	now := time.Now()
 
 	origclordid := field.NewOrigClOrdID(origid)
-	clordid := field.NewClOrdID(now.Format("235959.999999"))
+	clordid := field.NewClOrdID(now.Format("235959.999999999"))
 	cancel_req := ordercancelrequest.New(origclordid, clordid, field.NewSymbol("600000"), field.NewSide(enum.Side("1")), field.NewTransactTime(now))
 
 	// maybe useless
