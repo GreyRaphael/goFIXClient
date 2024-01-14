@@ -2,40 +2,39 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 )
 
 func main() {
+	input := flag.String("i", "input/zz500.csv", "input file(*.csv)")
+	batch_size := flag.Int("n", 1, "batch_size")
+	flag.Parse()
+
 	client := TradeClient{ConfigFilename: "clients/test/dev.cfg"}
 	client.Start()
 
-	fmt.Println("cmds: exit, o:order, s:strategy, b:basket, l:orderlist, c:cancel_all")
+	fmt.Println("cmds: e:exit, b:buy, s:sell, c:cancel_all, l:order_list")
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
-		switch scanner.Text() {
-		case "exit":
+		switch strings.ToLower(scanner.Text()) {
+		case "e": // exit
 			client.Stop()
 			os.Exit(0)
-		case "o":
-			orderid := client.SendOrder("1", "600000.SS", 100, 6.0)
-			client.CancelOrder(orderid)
-		case "s":
-			for i := 0; i < 500; i++ {
-				client.SendOrder("1", "600000.SS", 100, 6.0)
-			}
-		case "b":
-			client.SendBasket("1", "input/zz500.csv", 1)
-			// time.Sleep(time.Second)
-			// client.CancelAll()
-		case "l":
-			client.SendOrderList("order_list1")
+		case "b": // buy
+			client.SendBasket("1", *input, *batch_size)
+		case "s": // sell
+			client.SendBasket("2", *input, *batch_size)
+		case "l": // for test
+			client.SendOrderList()
 		case "c":
 			client.CancelAll()
 		}
 
-		time.Sleep(time.Second * 3)
-		fmt.Println("cmds: exit, o:order, s:strategy, b:basket, l:orderlist, c:cancel_all")
+		time.Sleep(time.Second)
+		fmt.Println("cmds: e:exit, b:buy, s:sell, c:cancel_all, l:order_list")
 	}
 }
