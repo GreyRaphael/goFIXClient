@@ -12,6 +12,7 @@ import (
 
 	"github.com/quickfixgo/enum"
 	"github.com/quickfixgo/field"
+	"github.com/quickfixgo/fix42/neworderlist"
 	"github.com/quickfixgo/fix42/newordersingle"
 	"github.com/quickfixgo/fix42/ordercancelrequest"
 	"github.com/quickfixgo/quickfix"
@@ -96,6 +97,32 @@ func (e *TradeClient) SendOrder(direction string, secucode string, volume int32,
 	msg := order.ToMessage()
 	quickfix.SendToTarget(msg, e.session_id)
 	return orderid
+}
+
+func (e *TradeClient) SendOrderList(listid string) {
+	orders := neworderlist.New(field.NewListID(listid), field.NewBidType(enum.BidType_NO_BIDDING_PROCESS), field.NewTotNoOrders(10))
+
+	gp := neworderlist.NewNoOrdersRepeatingGroup()
+	for i := 0; i < 10; i++ {
+		noorders := gp.Add()
+		now := time.Now()
+
+		noorders.SetClOrdID(now.Format("235959.999999"))
+		noorders.SetHandlInst(enum.HandlInst_AUTOMATED_EXECUTION_ORDER_PRIVATE_NO_BROKER_INTERVENTION)
+		noorders.SetSymbol("688009")
+		noorders.SetSide(enum.Side("1"))
+		noorders.SetTransactTime(now)
+		noorders.SetOrdType(enum.OrdType_LIMIT)
+		noorders.SetOrderQty(decimal.NewFromInt32(100), 0)
+		noorders.SetPrice(decimal.NewFromFloat(100.12), 2)
+		noorders.SetAccount(e.account_id)
+		noorders.SetCurrency("CNY")
+		noorders.SetSecurityType(enum.SecurityType_COMMON_STOCK)
+		noorders.SetSecurityExchange("SS")
+	}
+	orders.SetNoOrders(gp)
+	msg := orders.ToMessage()
+	quickfix.SendToTarget(msg, e.session_id)
 }
 
 func (e *TradeClient) SendBasket(direction string, filename string, batch_size int) {
