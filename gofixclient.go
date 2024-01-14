@@ -13,6 +13,7 @@ import (
 	"github.com/quickfixgo/enum"
 	"github.com/quickfixgo/field"
 	"github.com/quickfixgo/fix42/newordersingle"
+	"github.com/quickfixgo/fix42/ordercancelrequest"
 	"github.com/quickfixgo/quickfix"
 	"github.com/shopspring/decimal"
 )
@@ -63,11 +64,12 @@ func (e *TradeClient) FromApp(msg *quickfix.Message, sessionID quickfix.SessionI
 	return
 }
 
-func (e *TradeClient) SendOrder(direction string, secucode string, volume int32, price float64) {
+func (e *TradeClient) SendOrder(direction string, secucode string, volume int32, price float64) string {
 	codeinfo := strings.Split(secucode, ".")
 	now := time.Now()
+	orderid := now.Format("235959.999999")
 
-	ClOrdID := field.NewClOrdID(now.Format("235959.999999"))                                                // time as orderid
+	ClOrdID := field.NewClOrdID(orderid)                                                                    // time as orderid
 	HandInst := field.NewHandlInst(enum.HandlInst_AUTOMATED_EXECUTION_ORDER_PRIVATE_NO_BROKER_INTERVENTION) // "1"
 	Symbol := field.NewSymbol(codeinfo[0])
 	Side := field.NewSide(enum.Side(direction)) // 1 buy, 2 sell
@@ -84,6 +86,7 @@ func (e *TradeClient) SendOrder(direction string, secucode string, volume int32,
 	order.SetSecurityExchange(codeinfo[1])
 	msg := order.ToMessage()
 	quickfix.SendToTarget(msg, e.session_id)
+	return orderid
 }
 
 func (e *TradeClient) SendBasket(direction string, filename string, batch_size int) {
@@ -93,6 +96,23 @@ func (e *TradeClient) SendBasket(direction string, filename string, batch_size i
 			e.SendOrder(direction, stock.Code, stock.Vol, stock.Price)
 		}
 	}
+}
+
+func (e *TradeClient) CancelOrder(origid string) {
+	now := time.Now()
+
+	origclordid := field.NewOrigClOrdID(origid)
+	clordid := field.NewClOrdID(now.Format("235959.999999"))
+	cancel_req := ordercancelrequest.New(origclordid, clordid, field.NewSymbol("600000"), field.NewSide(enum.Side("1")), field.NewTransactTime(now))
+
+	// maybe useless
+	cancel_req.SetOrderQty(decimal.NewFromInt32(100), 0)
+	cancel_req.SetField(quickfix.Tag(40), quickfix.FIXString("2"))   // OrdType is "2"
+	cancel_req.SetField(quickfix.Tag(44), quickfix.FIXFloat(100.12)) // Price is "2"
+	cancel_req.SetAccount(e.account_id)
+
+	msg := cancel_req.ToMessage()
+	quickfix.SendToTarget(msg, e.session_id)
 }
 
 func (e *TradeClient) Start() {
