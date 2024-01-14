@@ -25,11 +25,13 @@ type TradeClient struct {
 	session_id     quickfix.SessionID
 	initiator      *quickfix.Initiator
 	is_logon       chan bool
+	order_sets     map[string]bool
 }
 
 // OnCreate implemented as part of Application interface
 func (e *TradeClient) OnCreate(sessionID quickfix.SessionID) {
 	e.is_logon = make(chan bool, 1)
+	e.order_sets = make(map[string]bool)
 }
 
 // OnLogon implemented as part of Application interface
@@ -61,6 +63,13 @@ func (e *TradeClient) ToApp(msg *quickfix.Message, sessionID quickfix.SessionID)
 // FromApp implemented as part of Application interface. This is the callback for all Application level messages from the counter party.
 func (e *TradeClient) FromApp(msg *quickfix.Message, sessionID quickfix.SessionID) (reject quickfix.MessageRejectError) {
 	fmt.Println("APP RECV: ", strings.ReplaceAll(msg.String(), string(rune(1)), "|"))
+	var orderid field.ClOrdIDField
+
+	if reject = msg.Body.Get(&orderid); reject != nil {
+		return
+	}
+	e.order_sets[orderid.String()] = true
+
 	return
 }
 
@@ -113,6 +122,12 @@ func (e *TradeClient) CancelOrder(origid string) {
 
 	msg := cancel_req.ToMessage()
 	quickfix.SendToTarget(msg, e.session_id)
+}
+
+func (e *TradeClient) CancelAll() {
+	for orderid, _ := range e.order_sets {
+		e.CancelOrder(orderid)
+	}
 }
 
 func (e *TradeClient) Start() {
