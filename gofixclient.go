@@ -111,8 +111,9 @@ func (e *TradeClient) SendOrder(direction string, secucode string, volume int32,
 	return orderid
 }
 
-func (e *TradeClient) SendOrderList(listid string) {
-	orders := neworderlist.New(field.NewListID(listid), field.NewBidType(enum.BidType_NO_BIDDING_PROCESS), field.NewTotNoOrders(10))
+func (e *TradeClient) SendOrderList() {
+	list_id := time.Now().Format("235959.999999")
+	orders := neworderlist.New(field.NewListID(list_id), field.NewBidType(enum.BidType_NO_BIDDING_PROCESS), field.NewTotNoOrders(10))
 
 	gp := neworderlist.NewNoOrdersRepeatingGroup()
 	for i := 0; i < 10; i++ {
