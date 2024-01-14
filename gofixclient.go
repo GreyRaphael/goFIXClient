@@ -125,7 +125,7 @@ func (e *TradeClient) CancelOrder(origid string) {
 }
 
 func (e *TradeClient) CancelAll() {
-	for orderid, _ := range e.order_sets {
+	for orderid := range e.order_sets {
 		e.CancelOrder(orderid)
 	}
 }
