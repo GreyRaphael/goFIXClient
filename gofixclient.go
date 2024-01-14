@@ -27,6 +27,7 @@ type TradeClient struct {
 	initiator      *quickfix.Initiator
 	is_logon       chan bool
 	order_sets     map[string]bool
+	order_counter  int32
 }
 
 // OnCreate implemented as part of Application interface
@@ -85,9 +86,10 @@ func (e *TradeClient) FromApp(msg *quickfix.Message, sessionID quickfix.SessionI
 }
 
 func (e *TradeClient) SendOrder(direction string, secucode string, volume int32, price float64) string {
+	e.order_counter++
 	codeinfo := strings.Split(secucode, ".")
 	now := time.Now()
-	orderid := now.Format("235959.999999999")
+	orderid := fmt.Sprintf("%d.%s", e.order_counter, now.Format("235959.999999"))
 
 	ClOrdID := field.NewClOrdID(orderid)                                                                    // time as orderid
 	HandInst := field.NewHandlInst(enum.HandlInst_AUTOMATED_EXECUTION_ORDER_PRIVATE_NO_BROKER_INTERVENTION) // "1"
@@ -115,9 +117,11 @@ func (e *TradeClient) SendOrderList(listid string) {
 	gp := neworderlist.NewNoOrdersRepeatingGroup()
 	for i := 0; i < 10; i++ {
 		noorders := gp.Add()
+		e.order_counter++
 		now := time.Now()
+		orderid := fmt.Sprintf("%d.%s", e.order_counter, now.Format("235959.999999"))
 
-		noorders.SetClOrdID(now.Format("235959.999999999"))
+		noorders.SetClOrdID(orderid)
 		noorders.SetHandlInst(enum.HandlInst_AUTOMATED_EXECUTION_ORDER_PRIVATE_NO_BROKER_INTERVENTION)
 		noorders.SetSymbol("688009")
 		noorders.SetSide(enum.Side("1"))
@@ -145,10 +149,12 @@ func (e *TradeClient) SendBasket(direction string, filename string, batch_size i
 }
 
 func (e *TradeClient) CancelOrder(origid string) {
+	e.order_counter++
 	now := time.Now()
 
 	origclordid := field.NewOrigClOrdID(origid)
-	clordid := field.NewClOrdID(now.Format("235959.999999999"))
+	orderid := fmt.Sprintf("%d.%s", e.order_counter, now.Format("235959.999999"))
+	clordid := field.NewClOrdID(orderid)
 	cancel_req := ordercancelrequest.New(origclordid, clordid, field.NewSymbol("600000"), field.NewSide(enum.Side("1")), field.NewTransactTime(now))
 
 	// maybe useless
