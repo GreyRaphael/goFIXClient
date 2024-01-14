@@ -7,9 +7,9 @@ import (
 )
 
 type Stock struct {
-	code  string
-	vol   int
-	price float64
+	Code  string
+	Vol   int32
+	Price float64
 }
 
 func ReadCsv(filename string, sep rune) []Stock {
@@ -34,9 +34,9 @@ func ReadCsv(filename string, sep rune) []Stock {
 		vol, _ := strconv.Atoi(record[1])
 		price, _ := strconv.ParseFloat(record[2], 64)
 		stock := Stock{
-			code:  record[0],
-			vol:   vol,
-			price: price,
+			Code:  record[0],
+			Vol:   int32(vol),
+			Price: price,
 		}
 		stocks = append(stocks, stock)
 	}
