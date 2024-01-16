@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"time"
 )
 
 func main() {
@@ -17,7 +16,7 @@ func main() {
 	client := TradeClient{ConfigFilename: "clients/test/swap.cfg"}
 	client.Start()
 
-	fmt.Println("cmds: e:exit, b:buy, s:sell, c:cancel_all, l:order_list")
+	fmt.Println("cmds: e:exit, b:buy, s:sell, c:cancel_all")
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
 		switch strings.ToLower(scanner.Text()) {
@@ -28,13 +27,8 @@ func main() {
 			client.SendBasket("1", *input, *batch_size)
 		case "s": // sell
 			client.SendBasket("2", *input, *batch_size)
-		case "l": // for test
-			client.SendOrderList()
 		case "c":
 			client.CancelAll()
 		}
-
-		time.Sleep(time.Second)
-		fmt.Println("cmds: e:exit, b:buy, s:sell, c:cancel_all, l:order_list")
 	}
 }
