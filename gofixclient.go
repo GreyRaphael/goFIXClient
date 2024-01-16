@@ -28,6 +28,7 @@ type TradeClient struct {
 	is_logon       chan bool
 	order_sets     map[string]bool
 	order_counter  int32
+	msg_seq_num    int
 }
 
 // OnCreate implemented as part of Application interface
@@ -50,6 +51,13 @@ func (e *TradeClient) OnLogout(sessionID quickfix.SessionID) {
 
 // FromAdmin implemented as part of Application interface
 func (e *TradeClient) FromAdmin(msg *quickfix.Message, sessionID quickfix.SessionID) (reject quickfix.MessageRejectError) {
+	var msg_type field.MsgTypeField
+	msg.Header.Get(&msg_type)
+	if msg_type.String() == "A" { // "A" is logon
+		var msg_seq_num field.MsgSeqNumField
+		msg.Header.Get(&msg_seq_num)
+		e.msg_seq_num = msg_seq_num.Int()
+	}
 	return nil
 }
 
@@ -88,14 +96,13 @@ func (e *TradeClient) FromApp(msg *quickfix.Message, sessionID quickfix.SessionI
 func (e *TradeClient) SendOrder(direction string, secucode string, volume int32, price float64) string {
 	e.order_counter++
 	codeinfo := strings.Split(secucode, ".")
-	now := time.Now()
-	orderid := fmt.Sprintf("%d.%s", e.order_counter, now.Format("235959.999999"))
+	orderid := fmt.Sprintf("%d.%d", e.msg_seq_num, e.order_counter)
 
 	ClOrdID := field.NewClOrdID(orderid)                                                                    // time as orderid
 	HandInst := field.NewHandlInst(enum.HandlInst_AUTOMATED_EXECUTION_ORDER_PRIVATE_NO_BROKER_INTERVENTION) // "1"
 	Symbol := field.NewSymbol(codeinfo[0])
 	Side := field.NewSide(enum.Side(direction)) // 1 buy, 2 sell
-	TransactionTime := field.NewTransactTime(now)
+	TransactionTime := field.NewTransactTime(time.Now())
 	OrdType := field.NewOrdType(enum.OrdType_LIMIT) // "2"
 
 	order := newordersingle.New(ClOrdID, HandInst, Symbol, Side, TransactionTime, OrdType)
@@ -112,21 +119,20 @@ func (e *TradeClient) SendOrder(direction string, secucode string, volume int32,
 }
 
 func (e *TradeClient) SendOrderList() {
-	list_id := time.Now().Format("235959.999999")
+	list_id := time.Now().Format("150412.999999")
 	orders := neworderlist.New(field.NewListID(list_id), field.NewBidType(enum.BidType_NO_BIDDING_PROCESS), field.NewTotNoOrders(10))
 
 	gp := neworderlist.NewNoOrdersRepeatingGroup()
 	for i := 0; i < 10; i++ {
 		noorders := gp.Add()
 		e.order_counter++
-		now := time.Now()
-		orderid := fmt.Sprintf("%d.%s", e.order_counter, now.Format("235959.999999"))
+		orderid := fmt.Sprintf("%d.%d", e.msg_seq_num, e.order_counter)
 
 		noorders.SetClOrdID(orderid)
 		noorders.SetHandlInst(enum.HandlInst_AUTOMATED_EXECUTION_ORDER_PRIVATE_NO_BROKER_INTERVENTION)
 		noorders.SetSymbol("688009")
 		noorders.SetSide(enum.Side("1"))
-		noorders.SetTransactTime(now)
+		noorders.SetTransactTime(time.Now())
 		noorders.SetOrdType(enum.OrdType_LIMIT)
 		noorders.SetOrderQty(decimal.NewFromInt32(100), 0)
 		noorders.SetPrice(decimal.NewFromFloat(100.12), 2)
@@ -151,12 +157,10 @@ func (e *TradeClient) SendBasket(direction string, filename string, batch_size i
 
 func (e *TradeClient) CancelOrder(origid string) {
 	e.order_counter++
-	now := time.Now()
-
 	origclordid := field.NewOrigClOrdID(origid)
-	orderid := fmt.Sprintf("%d.%s", e.order_counter, now.Format("23:59:59.999999"))
+	orderid := fmt.Sprintf("%d.%d", e.msg_seq_num, e.order_counter)
 	clordid := field.NewClOrdID(orderid)
-	cancel_req := ordercancelrequest.New(origclordid, clordid, field.NewSymbol("000001"), field.NewSide(enum.Side_BUY), field.NewTransactTime(now))
+	cancel_req := ordercancelrequest.New(origclordid, clordid, field.NewSymbol("000001"), field.NewSide(enum.Side_BUY), field.NewTransactTime(time.Now()))
 
 	cancel_req.SetSecurityExchange("SS")
 	cancel_req.SetOrderQty(decimal.NewFromInt32(100), 0)
