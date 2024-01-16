@@ -10,11 +10,11 @@ import (
 )
 
 func main() {
-	input := flag.String("i", "input/zz500.csv", "input file(*.csv)")
+	input := flag.String("i", "input/single.csv", "input file(*.csv)")
 	batch_size := flag.Int("n", 1, "batch_size")
 	flag.Parse()
 
-	client := TradeClient{ConfigFilename: "clients/test/dev.cfg"}
+	client := TradeClient{ConfigFilename: "clients/test/swap.cfg"}
 	client.Start()
 
 	fmt.Println("cmds: e:exit, b:buy, s:sell, c:cancel_all, l:order_list")

@@ -154,15 +154,16 @@ func (e *TradeClient) CancelOrder(origid string) {
 	now := time.Now()
 
 	origclordid := field.NewOrigClOrdID(origid)
-	orderid := fmt.Sprintf("%d.%s", e.order_counter, now.Format("235959.999999"))
+	orderid := fmt.Sprintf("%d.%s", e.order_counter, now.Format("23:59:59.999999"))
 	clordid := field.NewClOrdID(orderid)
-	cancel_req := ordercancelrequest.New(origclordid, clordid, field.NewSymbol("600000"), field.NewSide(enum.Side("1")), field.NewTransactTime(now))
+	cancel_req := ordercancelrequest.New(origclordid, clordid, field.NewSymbol("000001"), field.NewSide(enum.Side_BUY), field.NewTransactTime(now))
 
-	// maybe useless
+	cancel_req.SetSecurityExchange("SS")
 	cancel_req.SetOrderQty(decimal.NewFromInt32(100), 0)
-	cancel_req.SetField(quickfix.Tag(40), quickfix.FIXString("2"))   // OrdType is "2"
-	cancel_req.SetField(quickfix.Tag(44), quickfix.FIXFloat(100.12)) // Price is "2"
-	cancel_req.SetAccount(e.account_id)
+	// // useless tags
+	// cancel_req.SetField(quickfix.Tag(40), quickfix.FIXString("2")) // OrdType is "2"
+	// cancel_req.SetField(quickfix.Tag(44), quickfix.FIXFloat(100.12)) // Price is "2"
+	// cancel_req.SetAccount(e.account_id)
 
 	msg := cancel_req.ToMessage()
 	quickfix.SendToTarget(msg, e.session_id)
