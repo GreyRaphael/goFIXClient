@@ -119,6 +119,7 @@ func (e *TradeClient) SendOrder(direction string, secucode string, volume int32,
 }
 
 func (e *TradeClient) SendOrderList() {
+	// useless function
 	list_id := time.Now().Format("150412.999999")
 	orders := neworderlist.New(field.NewListID(list_id), field.NewBidType(enum.BidType_NO_BIDDING_PROCESS), field.NewTotNoOrders(10))
 
