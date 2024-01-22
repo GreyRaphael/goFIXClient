@@ -10,7 +10,7 @@ import (
 
 func main() {
 	input := flag.String("i", "input/single.csv", "input file(*.csv)")
-	batch_size := flag.Int("n", 1, "batch_size")
+	batchSize := flag.Int("n", 1, "the total number of batches")
 	flag.Parse()
 
 	client := TradeClient{ConfigFilename: "clients/test/swap.cfg"}
@@ -24,9 +24,9 @@ func main() {
 			client.Stop()
 			os.Exit(0)
 		case "b": // buy
-			client.SendBasket("1", *input, *batch_size)
+			client.SendBasket("1", *input, *batchSize)
 		case "s": // sell
-			client.SendBasket("2", *input, *batch_size)
+			client.SendBasket("2", *input, *batchSize)
 		case "c":
 			client.CancelAll()
 		}
