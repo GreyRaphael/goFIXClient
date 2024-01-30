@@ -16,7 +16,7 @@ func main() {
 	client := TradeClient{ConfigFilename: "clients/test/swap.cfg"}
 	client.Start()
 
-	fmt.Println("cmds: e:exit, b:buy, s:sell, c:cancel_all")
+	fmt.Println("cmds: e:exit, b:buy, s:sell, c:cancel_all, x:cancel_byid")
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
 		switch strings.ToLower(scanner.Text()) {
@@ -29,6 +29,11 @@ func main() {
 			client.SendBasket("2", *input, *batchSize)
 		case "c":
 			client.CancelAll()
+		case "x":
+			fmt.Println("Enter origid:")
+			var origid string
+			fmt.Scan(&origid)
+			client.CancelOrder(origid)
 		}
 	}
 }
