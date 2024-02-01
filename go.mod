@@ -14,5 +14,5 @@ require (
 	github.com/armon/go-proxyproto v0.1.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/quickfixgo/tag v0.1.0 // indirect
-	golang.org/x/net v0.18.0 // indirect
+	golang.org/x/net v0.20.0 // indirect
 )
