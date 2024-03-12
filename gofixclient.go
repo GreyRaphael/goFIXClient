@@ -204,6 +204,18 @@ func (e *TradeClient) Start() {
 	<-e.is_logon
 }
 
+func (e *TradeClient) SendAlgo(direction string, filename string, batchSize int) {
+	stocks := stock_utils.ReadCsv(filename, ',')
+	for i := 0; i < batchSize; i++ {
+		for _, stock := range stocks {
+			e.SendOrder(direction, stock.Code, stock.Vol, stock.Price)
+			time.Sleep(1 * time.Second)
+		}
+		e.CancelAll()
+		time.Sleep(3 * time.Second)
+	}
+}
+
 func (e *TradeClient) Stop() {
 	e.initiator.Stop()
 }
