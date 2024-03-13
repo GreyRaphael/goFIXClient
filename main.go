@@ -41,6 +41,42 @@ func SimpleTest() {
 	}
 }
 
+func MultiClient() {
+	// input := flag.String("i", "input/zz500.csv", "input file(*.csv)")
+	// batchSize := flag.Int("n", 1, "the total number of batches")
+	configsDir := flag.String("c", "clients/multi", "client config files")
+	flag.Parse()
+
+	entries, err := os.ReadDir(*configsDir)
+	if err != nil {
+		panic(err)
+	}
+
+	clientCounts := len(entries)
+	clients := make(chan TradeClient, clientCounts)
+	for _, e := range entries {
+		filename := fmt.Sprintf("%s/%s", *configsDir, e.Name())
+		clients <- TradeClient{ConfigFilename: filename}
+	}
+
+	scanner := bufio.NewScanner(os.Stdin)
+	for scanner.Scan() {
+		switch strings.ToLower(scanner.Text()) {
+		case "e": // exit
+			os.Exit(0)
+		case "in":
+			// login
+			for i := 0; i < clientCounts; i++ {
+				go func(clis chan TradeClient) {
+					client := <-clis
+					client.Start()
+				}(clients)
+			}
+		}
+	}
+}
+
 func main() {
-	SimpleTest()
+	// SimpleTest()
+	MultiClient()
 }
