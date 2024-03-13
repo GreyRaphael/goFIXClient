@@ -1,6 +1,6 @@
 module gofix
 
-go 1.21.6
+go 1.22
 
 require (
 	github.com/quickfixgo/enum v0.1.0

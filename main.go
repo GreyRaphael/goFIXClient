@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 )
 
 func SimpleTest() {
@@ -52,28 +53,16 @@ func MultiClient() {
 		panic(err)
 	}
 
-	clientCounts := len(entries)
-	clients := make(chan TradeClient, clientCounts)
-	for _, e := range entries {
-		filename := fmt.Sprintf("%s/%s", *configsDir, e.Name())
-		clients <- TradeClient{ConfigFilename: filename}
+	for _, entry := range entries {
+		go func() {
+			cfg := fmt.Sprintf("%s/%s", *configsDir, entry.Name())
+			client := TradeClient{ConfigFilename: cfg}
+			client.Start()
+
+		}()
 	}
 
-	scanner := bufio.NewScanner(os.Stdin)
-	for scanner.Scan() {
-		switch strings.ToLower(scanner.Text()) {
-		case "e": // exit
-			os.Exit(0)
-		case "in":
-			// login
-			for i := 0; i < clientCounts; i++ {
-				go func(clis chan TradeClient) {
-					client := <-clis
-					client.Start()
-				}(clients)
-			}
-		}
-	}
+	time.Sleep(5 * time.Second)
 }
 
 func main() {
