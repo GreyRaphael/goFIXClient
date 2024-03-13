@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-func main() {
+func SimpleTest() {
 	input := flag.String("i", "input/single.csv", "input file(*.csv)")
 	batchSize := flag.Int("n", 1, "the total number of batches")
 	cfg := flag.String("c", "clients/test/swap.cfg", "client config file")
@@ -39,4 +39,8 @@ func main() {
 			client.CancelOrder(origid)
 		}
 	}
+}
+
+func main() {
+	SimpleTest()
 }
