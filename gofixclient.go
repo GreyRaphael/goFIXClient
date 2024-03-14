@@ -33,7 +33,6 @@ type TradeClient struct {
 
 // OnCreate implemented as part of Application interface
 func (e *TradeClient) OnCreate(sessionID quickfix.SessionID) {
-	e.isLogon = make(chan bool, 1)
 	e.order_sets = make(map[string]bool)
 }
 
@@ -200,11 +199,15 @@ func (e *TradeClient) Start() {
 	conf_bytes, _ := io.ReadAll(conf_file)
 
 	// find all AccountID
-	reg_expr := regexp.MustCompile(`AccountID=(.*)`)
+	reg_expr := regexp.MustCompile(`AccountID=(\d+)`)
 	parts := reg_expr.FindAllSubmatch(conf_bytes, -1)
 	for _, v := range parts {
 		e.accountIdSlice = append(e.accountIdSlice, string(v[1]))
 	}
+
+	// init session number
+	sessionNum := len(e.accountIdSlice)
+	e.isLogon = make(chan bool, sessionNum)
 
 	// init settings, log_factory
 	settings, _ := quickfix.ParseSettings(bytes.NewReader(conf_bytes))
@@ -213,7 +216,10 @@ func (e *TradeClient) Start() {
 	// init initiator
 	e.initiator, _ = quickfix.NewInitiator(e, quickfix.NewMemoryStoreFactory(), settings, log_factory)
 	e.initiator.Start()
-	<-e.isLogon
+	for i := 0; i < sessionNum; i++ {
+		<-e.isLogon
+	}
+	close(e.isLogon)
 }
 
 func (e *TradeClient) SendAlgo(direction string, filename string, batchSize int) {
