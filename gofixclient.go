@@ -152,7 +152,7 @@ func (e *TradeClient) SendOrderList() {
 	orders.SetNoOrders(gp)
 	msg := orders.ToMessage()
 
-	for sessId, _ := range e.sessAccountMap {
+	for sessId := range e.sessAccountMap {
 		quickfix.SendToTarget(msg, sessId)
 	}
 }
@@ -182,7 +182,7 @@ func (e *TradeClient) CancelOrder(origid string) {
 
 	msg := cancel_req.ToMessage()
 
-	for sessId, _ := range e.sessAccountMap {
+	for sessId := range e.sessAccountMap {
 		quickfix.SendToTarget(msg, sessId)
 	}
 }
