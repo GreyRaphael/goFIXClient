@@ -26,7 +26,7 @@ type TradeClient struct {
 	isLogon          chan bool
 	orderContainer   map[string]bool
 	requestId        int32
-	msg_seq_num      int
+	logonSeqNum      int
 	senderAccountMap map[string]string
 	sessAccountMap   map[quickfix.SessionID]string
 }
@@ -51,17 +51,17 @@ func (e *TradeClient) OnLogon(sessionID quickfix.SessionID) {
 
 // OnLogout implemented as part of Application interface
 func (e *TradeClient) OnLogout(sessionID quickfix.SessionID) {
-	fmt.Println("logout")
+	fmt.Printf("logout, SessionID=%s\n", sessionID)
 }
 
 // FromAdmin implemented as part of Application interface
 func (e *TradeClient) FromAdmin(msg *quickfix.Message, sessionID quickfix.SessionID) (reject quickfix.MessageRejectError) {
-	var msg_type field.MsgTypeField
-	msg.Header.Get(&msg_type)
-	if msg_type.String() == "A" { // "A" is logon
-		var msg_seq_num field.MsgSeqNumField
-		msg.Header.Get(&msg_seq_num)
-		e.msg_seq_num = msg_seq_num.Int()
+	var msgType field.MsgTypeField
+	msg.Header.Get(&msgType)
+	if msgType.String() == "A" { // "A" is logon
+		var logonMsgSeqNum field.MsgSeqNumField
+		msg.Header.Get(&logonMsgSeqNum)
+		e.logonSeqNum = logonMsgSeqNum.Int()
 	}
 	return nil
 }
@@ -71,15 +71,15 @@ func (e *TradeClient) ToAdmin(msg *quickfix.Message, sessionID quickfix.SessionI
 
 // ToApp implemented as part of Application interface
 func (e *TradeClient) ToApp(msg *quickfix.Message, sessionID quickfix.SessionID) (err error) {
-	var msg_type field.MsgTypeField
-	msg.Header.Get(&msg_type)
-	if msg_type.String() == "D" {
-		fmt.Println("APP SEND:", strings.ReplaceAll(msg.String(), string(rune(1)), "|"))
+	var msgType field.MsgTypeField
+	msg.Header.Get(&msgType)
+	if msgType.String() == "D" {
+		fmt.Println("APP ORDER:", strings.ReplaceAll(msg.String(), string(rune(1)), "|"))
 
 		var order_id field.ClOrdIDField
 		msg.Body.Get(&order_id)
 		e.orderContainer[order_id.String()] = true
-	} else if msg_type.String() == "F" {
+	} else if msgType.String() == "F" {
 		fmt.Println("APP CANCEL:", strings.ReplaceAll(msg.String(), string(rune(1)), "|"))
 
 		var orig_order_id field.OrigClOrdIDField
@@ -101,7 +101,7 @@ func (e *TradeClient) FromApp(msg *quickfix.Message, sessionID quickfix.SessionI
 func (e *TradeClient) SendOrder(direction string, secucode string, volume int32, price float64) {
 	e.requestId++
 	codeinfo := strings.Split(secucode, ".")
-	orderid := fmt.Sprintf("%d.%d", e.msg_seq_num, e.requestId)
+	orderid := fmt.Sprintf("%d.%d", e.logonSeqNum, e.requestId)
 
 	ClOrdID := field.NewClOrdID(orderid)                                                                    // time as orderid
 	HandInst := field.NewHandlInst(enum.HandlInst_AUTOMATED_EXECUTION_ORDER_PRIVATE_NO_BROKER_INTERVENTION) // "1"
@@ -134,7 +134,7 @@ func (e *TradeClient) SendOrderList() {
 	for i := 0; i < 10; i++ {
 		noorders := gp.Add()
 		e.requestId++
-		orderid := fmt.Sprintf("%d.%d", e.msg_seq_num, e.requestId)
+		orderid := fmt.Sprintf("%d.%d", e.logonSeqNum, e.requestId)
 
 		noorders.SetClOrdID(orderid)
 		noorders.SetHandlInst(enum.HandlInst_AUTOMATED_EXECUTION_ORDER_PRIVATE_NO_BROKER_INTERVENTION)
@@ -169,7 +169,7 @@ func (e *TradeClient) SendBasket(direction string, filename string, batch_size i
 func (e *TradeClient) CancelOrder(origid string) {
 	e.requestId++
 	origclordid := field.NewOrigClOrdID(origid)
-	orderid := fmt.Sprintf("%d.%d", e.msg_seq_num, e.requestId)
+	orderid := fmt.Sprintf("%d.%d", e.logonSeqNum, e.requestId)
 	clordid := field.NewClOrdID(orderid)
 	cancel_req := ordercancelrequest.New(origclordid, clordid, field.NewSymbol("000001"), field.NewSide(enum.Side_BUY), field.NewTransactTime(time.Now()))
 
