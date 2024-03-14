@@ -28,7 +28,7 @@ type TradeClient struct {
 	order_sets     map[string]bool
 	order_counter  int32
 	msg_seq_num    int
-	sessionSlice   []quickfix.SessionID
+	sessionIdSlice []quickfix.SessionID
 }
 
 // OnCreate implemented as part of Application interface
@@ -40,7 +40,7 @@ func (e *TradeClient) OnCreate(sessionID quickfix.SessionID) {
 // OnLogon implemented as part of Application interface
 func (e *TradeClient) OnLogon(sessionID quickfix.SessionID) {
 	fmt.Printf("logon, SessionID=%s\n", sessionID)
-	e.sessionSlice = append(e.sessionSlice, sessionID)
+	e.sessionIdSlice = append(e.sessionIdSlice, sessionID)
 	e.is_logon <- true
 }
 
@@ -115,7 +115,7 @@ func (e *TradeClient) SendOrder(direction string, secucode string, volume int32,
 	order.SetSecurityExchange(codeinfo[1])
 	msg := order.ToMessage()
 
-	for _, sessId := range e.sessionSlice {
+	for _, sessId := range e.sessionIdSlice {
 		quickfix.SendToTarget(msg, sessId)
 	}
 
@@ -149,7 +149,7 @@ func (e *TradeClient) SendOrderList() {
 	orders.SetNoOrders(gp)
 	msg := orders.ToMessage()
 
-	for _, sessId := range e.sessionSlice {
+	for _, sessId := range e.sessionIdSlice {
 		quickfix.SendToTarget(msg, sessId)
 	}
 }
@@ -179,7 +179,7 @@ func (e *TradeClient) CancelOrder(origid string) {
 
 	msg := cancel_req.ToMessage()
 
-	for _, sessId := range e.sessionSlice {
+	for _, sessId := range e.sessionIdSlice {
 		quickfix.SendToTarget(msg, sessId)
 	}
 }
@@ -198,7 +198,7 @@ func (e *TradeClient) Start() {
 	}
 	defer conf_file.Close()
 
-	e.sessionSlice = make([]quickfix.SessionID, 20)
+	e.sessionIdSlice = make([]quickfix.SessionID, 20)
 
 	// init settings, log_factory
 	conf_bytes, _ := io.ReadAll(conf_file)
