@@ -6,13 +6,12 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"time"
 )
 
-func SimpleTest() {
+func SingleClient() {
 	input := flag.String("i", "input/single.csv", "input file(*.csv)")
 	batchSize := flag.Int("n", 1, "the total number of batches")
-	cfg := flag.String("c", "clients/test/swap.cfg", "client config file")
+	cfg := flag.String("c", "clients/test/local.cfg", "client config file")
 	flag.Parse()
 
 	client := TradeClient{ConfigFilename: *cfg}
@@ -42,30 +41,6 @@ func SimpleTest() {
 	}
 }
 
-func MultiClient() {
-	// input := flag.String("i", "input/zz500.csv", "input file(*.csv)")
-	// batchSize := flag.Int("n", 1, "the total number of batches")
-	configsDir := flag.String("c", "clients/multi", "client config files")
-	flag.Parse()
-
-	entries, err := os.ReadDir(*configsDir)
-	if err != nil {
-		panic(err)
-	}
-
-	for _, entry := range entries {
-		go func() {
-			cfg := fmt.Sprintf("%s/%s", *configsDir, entry.Name())
-			client := TradeClient{ConfigFilename: cfg}
-			client.Start()
-
-		}()
-	}
-
-	time.Sleep(5 * time.Second)
-}
-
 func main() {
-	// SimpleTest()
-	MultiClient()
+	SingleClient()
 }
