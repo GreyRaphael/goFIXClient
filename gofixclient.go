@@ -22,13 +22,13 @@ import (
 // TradeClient implements the quickfix.Application interface
 type TradeClient struct {
 	ConfigFilename string
-	account_id     string
 	initiator      *quickfix.Initiator
 	is_logon       chan bool
 	order_sets     map[string]bool
 	order_counter  int32
 	msg_seq_num    int
 	sessionIdSlice []quickfix.SessionID
+	accountIdSlice []string
 }
 
 // OnCreate implemented as part of Application interface
@@ -108,14 +108,14 @@ func (e *TradeClient) SendOrder(direction string, secucode string, volume int32,
 	order := newordersingle.New(ClOrdID, HandInst, Symbol, Side, TransactionTime, OrdType)
 	order.SetOrderQty(decimal.NewFromInt32(volume), 0)
 	order.SetPrice(decimal.NewFromFloat(price), 2) // scale小数点后2位
-	order.SetAccount(e.account_id)
 	order.SetCurrency("CNY")
 	order.SetSecurityType(enum.SecurityType_COMMON_STOCK) // "CS"
 
 	order.SetSecurityExchange(codeinfo[1])
-	msg := order.ToMessage()
 
-	for _, sessId := range e.sessionIdSlice {
+	for i, sessId := range e.sessionIdSlice {
+		order.SetAccount(e.accountIdSlice[i])
+		msg := order.ToMessage()
 		quickfix.SendToTarget(msg, sessId)
 	}
 
@@ -141,7 +141,7 @@ func (e *TradeClient) SendOrderList() {
 		noorders.SetOrdType(enum.OrdType_LIMIT)
 		noorders.SetOrderQty(decimal.NewFromInt32(100), 0)
 		noorders.SetPrice(decimal.NewFromFloat(100.12), 2)
-		noorders.SetAccount(e.account_id)
+		noorders.SetAccount(e.accountIdSlice[0])
 		noorders.SetCurrency("CNY")
 		noorders.SetSecurityType(enum.SecurityType_COMMON_STOCK)
 		noorders.SetSecurityExchange("SS")
@@ -175,7 +175,7 @@ func (e *TradeClient) CancelOrder(origid string) {
 	// // useless tags
 	// cancel_req.SetField(quickfix.Tag(40), quickfix.FIXString("2")) // OrdType is "2"
 	// cancel_req.SetField(quickfix.Tag(44), quickfix.FIXFloat(100.12)) // Price is "2"
-	// cancel_req.SetAccount(e.account_id)
+	// cancel_req.SetAccount(e.accountIdSlice[0])
 
 	msg := cancel_req.ToMessage()
 
@@ -197,16 +197,16 @@ func (e *TradeClient) Start() {
 		panic(err)
 	}
 	defer conf_file.Close()
-
-	e.sessionIdSlice = make([]quickfix.SessionID, 20)
-
-	// init settings, log_factory
 	conf_bytes, _ := io.ReadAll(conf_file)
 
+	// find all AccountID
 	reg_expr := regexp.MustCompile(`AccountID=(.*)`)
-	parts := reg_expr.FindSubmatch(conf_bytes)
-	e.account_id = string(parts[1])
+	parts := reg_expr.FindAllSubmatch(conf_bytes, -1)
+	for _, v := range parts {
+		e.accountIdSlice = append(e.accountIdSlice, string(v[1]))
+	}
 
+	// init settings, log_factory
 	settings, _ := quickfix.ParseSettings(bytes.NewReader(conf_bytes))
 	log_factory, _ := quickfix.NewFileLogFactory(settings)
 
