@@ -23,7 +23,7 @@ import (
 type TradeClient struct {
 	ConfigFilename string
 	initiator      *quickfix.Initiator
-	is_logon       chan bool
+	isLogon        chan bool
 	order_sets     map[string]bool
 	order_counter  int32
 	msg_seq_num    int
@@ -33,7 +33,7 @@ type TradeClient struct {
 
 // OnCreate implemented as part of Application interface
 func (e *TradeClient) OnCreate(sessionID quickfix.SessionID) {
-	e.is_logon = make(chan bool, 1)
+	e.isLogon = make(chan bool, 1)
 	e.order_sets = make(map[string]bool)
 }
 
@@ -41,7 +41,7 @@ func (e *TradeClient) OnCreate(sessionID quickfix.SessionID) {
 func (e *TradeClient) OnLogon(sessionID quickfix.SessionID) {
 	fmt.Printf("logon, SessionID=%s\n", sessionID)
 	e.sessionIdSlice = append(e.sessionIdSlice, sessionID)
-	e.is_logon <- true
+	e.isLogon <- true
 }
 
 // OnLogout implemented as part of Application interface
@@ -213,7 +213,7 @@ func (e *TradeClient) Start() {
 	// init initiator
 	e.initiator, _ = quickfix.NewInitiator(e, quickfix.NewMemoryStoreFactory(), settings, log_factory)
 	e.initiator.Start()
-	<-e.is_logon
+	<-e.isLogon
 }
 
 func (e *TradeClient) SendAlgo(direction string, filename string, batchSize int) {
