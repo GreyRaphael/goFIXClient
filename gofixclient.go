@@ -21,25 +21,31 @@ import (
 
 // TradeClient implements the quickfix.Application interface
 type TradeClient struct {
-	ConfigFilename string
-	initiator      *quickfix.Initiator
-	isLogon        chan bool
-	order_sets     map[string]bool
-	order_counter  int32
-	msg_seq_num    int
-	sessionIdSlice []quickfix.SessionID
-	accountIdSlice []string
+	ConfigFilename   string
+	initiator        *quickfix.Initiator
+	isLogon          chan bool
+	order_sets       map[string]bool
+	order_counter    int32
+	msg_seq_num      int
+	senderAccountMap map[string]string
+	sessAccountMap   map[quickfix.SessionID]string
 }
 
 // OnCreate implemented as part of Application interface
 func (e *TradeClient) OnCreate(sessionID quickfix.SessionID) {
 	e.order_sets = make(map[string]bool)
+	e.sessAccountMap = make(map[quickfix.SessionID]string)
 }
 
 // OnLogon implemented as part of Application interface
 func (e *TradeClient) OnLogon(sessionID quickfix.SessionID) {
 	fmt.Printf("logon, SessionID=%s\n", sessionID)
-	e.sessionIdSlice = append(e.sessionIdSlice, sessionID)
+
+	for senderId, accountId := range e.senderAccountMap {
+		if strings.Contains(sessionID.String(), senderId) {
+			e.sessAccountMap[sessionID] = accountId
+		}
+	}
 	e.isLogon <- true
 }
 
@@ -112,8 +118,8 @@ func (e *TradeClient) SendOrder(direction string, secucode string, volume int32,
 
 	order.SetSecurityExchange(codeinfo[1])
 
-	for i, sessId := range e.sessionIdSlice {
-		order.SetAccount(e.accountIdSlice[i])
+	for sessId, accountId := range e.sessAccountMap {
+		order.SetAccount(accountId)
 		msg := order.ToMessage()
 		quickfix.SendToTarget(msg, sessId)
 	}
@@ -140,7 +146,7 @@ func (e *TradeClient) SendOrderList() {
 		noorders.SetOrdType(enum.OrdType_LIMIT)
 		noorders.SetOrderQty(decimal.NewFromInt32(100), 0)
 		noorders.SetPrice(decimal.NewFromFloat(100.12), 2)
-		noorders.SetAccount(e.accountIdSlice[0])
+		// noorders.SetAccount("xxxxxx")
 		noorders.SetCurrency("CNY")
 		noorders.SetSecurityType(enum.SecurityType_COMMON_STOCK)
 		noorders.SetSecurityExchange("SS")
@@ -148,7 +154,7 @@ func (e *TradeClient) SendOrderList() {
 	orders.SetNoOrders(gp)
 	msg := orders.ToMessage()
 
-	for _, sessId := range e.sessionIdSlice {
+	for sessId, _ := range e.sessAccountMap {
 		quickfix.SendToTarget(msg, sessId)
 	}
 }
@@ -174,11 +180,11 @@ func (e *TradeClient) CancelOrder(origid string) {
 	// // useless tags
 	// cancel_req.SetField(quickfix.Tag(40), quickfix.FIXString("2")) // OrdType is "2"
 	// cancel_req.SetField(quickfix.Tag(44), quickfix.FIXFloat(100.12)) // Price is "2"
-	// cancel_req.SetAccount(e.accountIdSlice[0])
+	// cancel_req.SetAccount("xxxxxx")
 
 	msg := cancel_req.ToMessage()
 
-	for _, sessId := range e.sessionIdSlice {
+	for sessId, _ := range e.sessAccountMap {
 		quickfix.SendToTarget(msg, sessId)
 	}
 }
@@ -199,14 +205,21 @@ func (e *TradeClient) Start() {
 	conf_bytes, _ := io.ReadAll(conf_file)
 
 	// find all AccountID
-	reg_expr := regexp.MustCompile(`AccountID=(\d+)`)
-	parts := reg_expr.FindAllSubmatch(conf_bytes, -1)
-	for _, v := range parts {
-		e.accountIdSlice = append(e.accountIdSlice, string(v[1]))
+	accountRegex := regexp.MustCompile(`AccountID=(\d+)`)
+	accountParts := accountRegex.FindAllSubmatch(conf_bytes, -1)
+	// find all SenderCompID
+	senderRegex := regexp.MustCompile(`SenderCompID=(\w+)`)
+	senderParts := senderRegex.FindAllSubmatch(conf_bytes, -1)
+	e.senderAccountMap = make(map[string]string)
+	for i, v := range senderParts {
+		SenderCompID := string(v[1])
+		AccountID := string(accountParts[i][1])
+		e.senderAccountMap[SenderCompID] = AccountID
 	}
+	// fmt.Println(e.senderAccountMap)
 
 	// init session number
-	sessionNum := len(e.accountIdSlice)
+	sessionNum := len(senderParts)
 	e.isLogon = make(chan bool, sessionNum)
 
 	// init settings, log_factory
@@ -216,6 +229,8 @@ func (e *TradeClient) Start() {
 	// init initiator
 	e.initiator, _ = quickfix.NewInitiator(e, quickfix.NewMemoryStoreFactory(), settings, log_factory)
 	e.initiator.Start()
+
+	// wait all sesssion logon
 	for i := 0; i < sessionNum; i++ {
 		<-e.isLogon
 	}
