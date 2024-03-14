@@ -23,12 +23,12 @@ import (
 type TradeClient struct {
 	ConfigFilename string
 	account_id     string
-	session_id     quickfix.SessionID
 	initiator      *quickfix.Initiator
 	is_logon       chan bool
 	order_sets     map[string]bool
 	order_counter  int32
 	msg_seq_num    int
+	sessionSlice   []quickfix.SessionID
 }
 
 // OnCreate implemented as part of Application interface
@@ -40,7 +40,7 @@ func (e *TradeClient) OnCreate(sessionID quickfix.SessionID) {
 // OnLogon implemented as part of Application interface
 func (e *TradeClient) OnLogon(sessionID quickfix.SessionID) {
 	fmt.Printf("logon, SessionID=%s\n", sessionID)
-	e.session_id = sessionID
+	e.sessionSlice = append(e.sessionSlice, sessionID)
 	e.is_logon <- true
 }
 
@@ -114,7 +114,11 @@ func (e *TradeClient) SendOrder(direction string, secucode string, volume int32,
 
 	order.SetSecurityExchange(codeinfo[1])
 	msg := order.ToMessage()
-	quickfix.SendToTarget(msg, e.session_id)
+
+	for _, sessId := range e.sessionSlice {
+		quickfix.SendToTarget(msg, sessId)
+	}
+
 	return orderid
 }
 
@@ -144,7 +148,10 @@ func (e *TradeClient) SendOrderList() {
 	}
 	orders.SetNoOrders(gp)
 	msg := orders.ToMessage()
-	quickfix.SendToTarget(msg, e.session_id)
+
+	for _, sessId := range e.sessionSlice {
+		quickfix.SendToTarget(msg, sessId)
+	}
 }
 
 func (e *TradeClient) SendBasket(direction string, filename string, batch_size int) {
@@ -171,7 +178,10 @@ func (e *TradeClient) CancelOrder(origid string) {
 	// cancel_req.SetAccount(e.account_id)
 
 	msg := cancel_req.ToMessage()
-	quickfix.SendToTarget(msg, e.session_id)
+
+	for _, sessId := range e.sessionSlice {
+		quickfix.SendToTarget(msg, sessId)
+	}
 }
 
 func (e *TradeClient) CancelAll() {
@@ -187,6 +197,8 @@ func (e *TradeClient) Start() {
 		panic(err)
 	}
 	defer conf_file.Close()
+
+	e.sessionSlice = make([]quickfix.SessionID, 20)
 
 	// init settings, log_factory
 	conf_bytes, _ := io.ReadAll(conf_file)
