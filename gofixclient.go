@@ -180,9 +180,9 @@ func (e *TradeClient) CancelOrder(origid string) {
 	// cancel_req.SetField(quickfix.Tag(44), quickfix.FIXFloat(100.12)) // Price is "2"
 	// cancel_req.SetAccount("xxxxxx")
 
-	msg := cancel_req.ToMessage()
-
-	for sessId := range e.sessAccountMap {
+	for sessId, accountId := range e.sessAccountMap {
+		cancel_req.SetAccount(accountId)
+		msg := cancel_req.ToMessage()
 		quickfix.SendToTarget(msg, sessId)
 	}
 }
