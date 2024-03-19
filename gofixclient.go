@@ -98,13 +98,13 @@ func (e *TradeClient) FromApp(msg *quickfix.Message, sessionID quickfix.SessionI
 	return
 }
 
-func (e *TradeClient) SendOrder(direction string, secucode string, volume int32, price float64) {
+func (e *TradeClient) SendOrder(direction string, secucode string, volume int32, price float64, orderType string) {
 	e.requestId++
 	codeinfo := strings.Split(secucode, ".")
 	orderid := fmt.Sprintf("%d.%d", e.logonSeqNum, e.requestId)
 
-	ClOrdID := field.NewClOrdID(orderid)                                                                    // time as orderid
-	HandInst := field.NewHandlInst(enum.HandlInst_AUTOMATED_EXECUTION_ORDER_PRIVATE_NO_BROKER_INTERVENTION) // "1"
+	ClOrdID := field.NewClOrdID(orderid)                      // time as orderid
+	HandInst := field.NewHandlInst(enum.HandlInst(orderType)) // "1":DMA; "2":DMA2; "3":CARE
 	Symbol := field.NewSymbol(codeinfo[0])
 	Side := field.NewSide(enum.Side(direction)) // 1 buy, 2 sell
 	TransactionTime := field.NewTransactTime(time.Now())
@@ -157,11 +157,11 @@ func (e *TradeClient) SendOrderList() {
 	}
 }
 
-func (e *TradeClient) SendBasket(direction string, filename string, batch_size int) {
+func (e *TradeClient) SendBasket(direction string, filename string, batch_size int, orderType string) {
 	stocks := stock_utils.ReadCsv(filename, ',')
 	for i := 0; i < batch_size; i++ {
 		for _, stock := range stocks {
-			e.SendOrder(direction, stock.Code, stock.Vol, stock.Price)
+			e.SendOrder(direction, stock.Code, stock.Vol, stock.Price, orderType)
 		}
 	}
 }
@@ -235,11 +235,11 @@ func (e *TradeClient) Start() {
 	close(e.isLogon)
 }
 
-func (e *TradeClient) SendAlgo(direction string, filename string, batchSize int) {
+func (e *TradeClient) SendAlgo(direction string, filename string, batchSize int, orderType string) {
 	stocks := stock_utils.ReadCsv(filename, ',')
 	for i := 0; i < batchSize; i++ {
 		for _, stock := range stocks {
-			e.SendOrder(direction, stock.Code, stock.Vol, stock.Price)
+			e.SendOrder(direction, stock.Code, stock.Vol, stock.Price, orderType)
 			time.Sleep(1 * time.Second)
 		}
 		e.CancelAll()
