@@ -164,8 +164,9 @@ func (e *TradeClient) SendDSA(direction string, secucode string, volume int32, p
 	}
 	// algo parameters
 	order.SetField(6061, quickfix.FIXString(algoCfg.Name))
-	order.SetField(6062, quickfix.FIXUTCTimestamp{Time: time.Now(), Precision: quickfix.TimestampPrecision(time.Second)})
-	order.SetField(6063, quickfix.FIXUTCTimestamp{Time: time.Now().Add(time.Minute * time.Duration(algoCfg.Duration)), Precision: quickfix.TimestampPrecision(time.Second)})
+	precision := quickfix.TimestampPrecision(time.Second)
+	order.SetField(6062, quickfix.FIXUTCTimestamp{Time: time.Now(), Precision: precision})
+	order.SetField(6063, quickfix.FIXUTCTimestamp{Time: time.Now().Add(time.Minute * time.Duration(algoCfg.Duration)), Precision: precision})
 	order.SetField(6064, quickfix.FIXFloat(algoCfg.MaxMarketShare))
 	order.SetField(6065, quickfix.FIXInt(algoCfg.TradeStyle))
 	order.SetField(6302, quickfix.FIXInt(algoCfg.PriceType))
