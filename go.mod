@@ -3,6 +3,7 @@ module gofix
 go 1.22
 
 require (
+	github.com/pelletier/go-toml/v2 v2.2.0
 	github.com/quickfixgo/enum v0.1.0
 	github.com/quickfixgo/field v0.1.0
 	github.com/quickfixgo/fix42 v0.1.0

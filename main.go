@@ -12,7 +12,7 @@ func SingleClient() {
 	input := flag.String("i", "input/single.csv", "input file(*.csv)")
 	batchSize := flag.Int("n", 1, "the total number of batches")
 	cfg := flag.String("c", "clients/test/local.cfg", "client config file")
-	orderType := flag.String("t", "1", "order type, 1: DMA; 2: DMA2; 3: CARE")
+	orderType := flag.String("t", "1", "order type, 1: DMA; 2: DMA2; 3: CARE; 4: DSA")
 	flag.Parse()
 
 	client := TradeClient{ConfigFilename: *cfg}

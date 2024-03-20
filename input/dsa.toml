@@ -1,0 +1,25 @@
+Name = "G-TWAP"       # G-TWAP,G-VWAP,G-Percent
+Duration = 6          # 算法持续时间min
+MaxMarketShare = 0.00 # 最大市场占比
+TradeStyle = 5        # 交易风格, 1:保守; 3:正常; 5:激进
+PriceType = -1        # 相对限价类型, -1:不控制
+Unit = 0              # 价格单位: 0:最小单位; 1:万分之一; 2:金额
+Change = 0.00         # 价格变化量
+
+# # VWAP
+# Name = "G-VWAP"
+# Duration = 6
+# MaxMarketShare = 0.00
+# TradeStyle = 5
+# PriceType = -1
+# Unit = 0
+# Change = 0.00
+
+# # Percent
+# Name = "G-Percent"
+# Duration = 6
+# MaxMarketShare = 0.00
+# TradeStyle = 5
+# PriceType = -1
+# Unit = 0
+# Change = 0.00

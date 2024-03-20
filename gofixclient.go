@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"fmt"
 	"gofix/stock_utils"
-	"io"
 	"os"
 	"regexp"
 	"strings"
 	"time"
 
+	"github.com/pelletier/go-toml/v2"
 	"github.com/quickfixgo/enum"
 	"github.com/quickfixgo/field"
 	"github.com/quickfixgo/fix42/neworderlist"
@@ -125,6 +125,60 @@ func (e *TradeClient) SendOrder(direction string, secucode string, volume int32,
 	}
 }
 
+type DSAConfig struct {
+	Name           string
+	Duration       int
+	MaxMarketShare float64
+	TradeStyle     int
+	PriceType      int
+	Unit           int
+	Change         float64
+}
+
+func (e *TradeClient) SendDSA(direction string, secucode string, volume int32, price float64, orderType string) {
+	e.requestId++
+	codeinfo := strings.Split(secucode, ".")
+	orderid := fmt.Sprintf("%d.%d", e.logonSeqNum, e.requestId)
+
+	ClOrdID := field.NewClOrdID(orderid)                                       // time as orderid
+	HandInst := field.NewHandlInst(enum.HandlInst_MANUAL_ORDER_BEST_EXECUTION) // use MANUAL order
+	Symbol := field.NewSymbol(codeinfo[0])
+	Side := field.NewSide(enum.Side(direction)) // 1 buy, 2 sell
+	TransactionTime := field.NewTransactTime(time.Now())
+	OrdType := field.NewOrdType(enum.OrdType_LIMIT) // "2"
+
+	order := newordersingle.New(ClOrdID, HandInst, Symbol, Side, TransactionTime, OrdType)
+	order.SetOrderQty(decimal.NewFromInt32(volume), 0)
+	order.SetPrice(decimal.NewFromFloat(price), 2) // scale小数点后2位
+	order.SetCurrency("CNY")
+	order.SetSecurityType(enum.SecurityType_COMMON_STOCK) // "CS"
+
+	order.SetSecurityExchange(codeinfo[1])
+
+	// parse algo config file
+	algoBytes, _ := os.ReadFile("input/dsa.toml")
+	var algoCfg DSAConfig
+	err := toml.Unmarshal(algoBytes, &algoCfg)
+	if err != nil {
+		panic(err)
+	}
+	// algo parameters
+	order.SetField(6061, quickfix.FIXString(algoCfg.Name))
+	order.SetField(6062, quickfix.FIXUTCTimestamp{Time: time.Now(), Precision: quickfix.TimestampPrecision(time.Second)})
+	order.SetField(6063, quickfix.FIXUTCTimestamp{Time: time.Now().Add(time.Minute * time.Duration(algoCfg.Duration)), Precision: quickfix.TimestampPrecision(time.Second)})
+	order.SetField(6064, quickfix.FIXFloat(algoCfg.MaxMarketShare))
+	order.SetField(6065, quickfix.FIXInt(algoCfg.TradeStyle))
+	order.SetField(6302, quickfix.FIXInt(algoCfg.PriceType))
+	order.SetField(6303, quickfix.FIXInt(algoCfg.Unit))
+	order.SetField(6304, quickfix.FIXFloat(algoCfg.Change))
+
+	for sessId, accountId := range e.sessAccountMap {
+		order.SetAccount(accountId)
+		msg := order.ToMessage()
+		quickfix.SendToTarget(msg, sessId)
+	}
+}
+
 func (e *TradeClient) SendOrderList() {
 	// useless function
 	list_id := time.Now().Format("150412.999999")
@@ -161,7 +215,11 @@ func (e *TradeClient) SendBasket(direction string, filename string, batch_size i
 	stocks := stock_utils.ReadCsv(filename, ',')
 	for i := 0; i < batch_size; i++ {
 		for _, stock := range stocks {
-			e.SendOrder(direction, stock.Code, stock.Vol, stock.Price, orderType)
+			if orderType != "4" {
+				e.SendOrder(direction, stock.Code, stock.Vol, stock.Price, orderType)
+			} else {
+				e.SendDSA(direction, stock.Code, stock.Vol, stock.Price, orderType)
+			}
 		}
 	}
 }
@@ -195,12 +253,7 @@ func (e *TradeClient) CancelAll() {
 
 func (e *TradeClient) Start() {
 	// read .cfg file
-	conf_file, err := os.Open(e.ConfigFilename)
-	if err != nil {
-		panic(err)
-	}
-	defer conf_file.Close()
-	conf_bytes, _ := io.ReadAll(conf_file)
+	conf_bytes, _ := os.ReadFile(e.ConfigFilename)
 
 	// find all AccountID
 	accountRegex := regexp.MustCompile(`AccountID=(\d+)`)
