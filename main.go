@@ -27,7 +27,7 @@ func SingleClient() {
 	cancelCmd := flag.NewFlagSet("cancel", flag.ContinueOnError)
 	origOrdId := cancelCmd.String("o", "-1", "cancel order: -1, cancel all; other, cancel specified")
 
-	fmt.Println("Enter subcmds: order(o), cancel(c), exit(e)")
+	fmt.Println("CMDs: order(o), cancel(c), exit(e) | Helps: order -h; cancel -h;")
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
 		line := strings.ToLower(scanner.Text())
@@ -59,7 +59,7 @@ func SingleClient() {
 			fmt.Println("unknown command")
 		}
 		fmt.Println(strings.Repeat("=", 60))
-		fmt.Println("Enter subcmds: order(o), cancel(c), exit(e)")
+		fmt.Println("CMDs: order(o), cancel(c), exit(e) | Helps: order -h; cancel -h;")
 	}
 }
 
