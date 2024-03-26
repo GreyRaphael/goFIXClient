@@ -32,14 +32,14 @@ func SingleClient() {
 	for scanner.Scan() {
 		line := strings.ToLower(scanner.Text())
 		args := strings.Fields(line)
-		fmt.Println(strings.Repeat("=", 60))
+		fmt.Println(strings.Repeat("=", 65))
 		switch args[0] {
 		case "order", "o":
 			err := orderCmd.Parse(args[1:])
 			if err == nil {
-				if *algo == "direct" {
+				if *algo == "1" {
 					client.SendBasket(*direction, *input, *batNum, *handlInst)
-				} else if *algo == "latency" {
+				} else if *algo == "2" {
 					client.SendAlgo(*direction, *input, *batNum, *handlInst)
 				}
 			}
@@ -58,7 +58,15 @@ func SingleClient() {
 		default:
 			fmt.Println("unknown command")
 		}
-		fmt.Println(strings.Repeat("=", 60))
+		// reset variable value
+		*direction = "1"
+		*handlInst = "1"
+		*input = "input/single.csv"
+		*batNum = 1
+		*algo = "1"
+		*origOrdId = "-1"
+		// print tip
+		fmt.Println(strings.Repeat("=", 65))
 		fmt.Println("CMDs: order(o), cancel(c), exit(e) | Helps: order -h; cancel -h;")
 	}
 }
