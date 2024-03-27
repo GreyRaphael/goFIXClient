@@ -98,13 +98,13 @@ func (e *TradeClient) FromApp(msg *quickfix.Message, sessionID quickfix.SessionI
 	return
 }
 
-func (e *TradeClient) SendOrder(direction string, secucode string, volume int32, price float64, orderType string) {
+func (e *TradeClient) SendOrder(direction string, secucode string, volume int32, price float64, handlInstType string) {
 	e.requestId++
 	codeinfo := strings.Split(secucode, ".")
 	orderid := fmt.Sprintf("%d.%d", e.logonSeqNum, e.requestId)
 
-	ClOrdID := field.NewClOrdID(orderid)                      // time as orderid
-	HandInst := field.NewHandlInst(enum.HandlInst(orderType)) // "1":DMA; "2":DMA2; "3":CARE
+	ClOrdID := field.NewClOrdID(orderid)                          // time as orderid
+	HandInst := field.NewHandlInst(enum.HandlInst(handlInstType)) // "1":DMA; "2":DMA2; "3":CARE
 	Symbol := field.NewSymbol(codeinfo[0])
 	Side := field.NewSide(enum.Side(direction)) // 1 buy, 2 sell
 	TransactionTime := field.NewTransactTime(time.Now())
@@ -135,7 +135,7 @@ type DSAConfig struct {
 	Change         float64
 }
 
-func (e *TradeClient) SendDSA(direction string, secucode string, volume int32, price float64, orderType string) {
+func (e *TradeClient) SendDSA(direction string, secucode string, volume int32, price float64, handlInstType string) {
 	e.requestId++
 	codeinfo := strings.Split(secucode, ".")
 	orderid := fmt.Sprintf("%d.%d", e.logonSeqNum, e.requestId)
@@ -212,14 +212,14 @@ func (e *TradeClient) SendOrderList() {
 	}
 }
 
-func (e *TradeClient) SendBasket(direction string, filename string, batch_size int, orderType string) {
+func (e *TradeClient) SendBasket(direction string, filename string, batch_size int, handlInstType string) {
 	stocks := stock_utils.ReadCsv(filename, ',')
 	for i := 0; i < batch_size; i++ {
 		for _, stock := range stocks {
-			if orderType != "4" {
-				e.SendOrder(direction, stock.Code, stock.Vol, stock.Price, orderType)
+			if handlInstType != "4" {
+				e.SendOrder(direction, stock.Code, stock.Vol, stock.Price, handlInstType)
 			} else {
-				e.SendDSA(direction, stock.Code, stock.Vol, stock.Price, orderType)
+				e.SendDSA(direction, stock.Code, stock.Vol, stock.Price, handlInstType)
 			}
 		}
 	}
@@ -289,11 +289,11 @@ func (e *TradeClient) Start() {
 	close(e.isLogon)
 }
 
-func (e *TradeClient) SendAlgo(direction string, filename string, batchSize int, orderType string) {
+func (e *TradeClient) SendAlgo(direction string, filename string, batchSize int, handlInstType string) {
 	stocks := stock_utils.ReadCsv(filename, ',')
 	for i := 0; i < batchSize; i++ {
 		for _, stock := range stocks {
-			e.SendOrder(direction, stock.Code, stock.Vol, stock.Price, orderType)
+			e.SendOrder(direction, stock.Code, stock.Vol, stock.Price, handlInstType)
 			time.Sleep(1 * time.Second)
 		}
 		e.CancelAll()
