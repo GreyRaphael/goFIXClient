@@ -18,7 +18,7 @@ func SingleClient() {
 	// subcommands: order
 	orderCmd := flag.NewFlagSet("order", flag.ContinueOnError)
 	direction := orderCmd.String("d", "1", "direction: 1,buy; 2,sell")
-	handlInst := orderCmd.String("t", "1", "HandlInst: 1,DMA; 2,DMA2; 3,CARE; 4:DSA")
+	hsOrdType := orderCmd.String("t", "dma", "hsOrdType: dma; dma2; care; dsa")
 	input := orderCmd.String("i", "input/single.csv", "stock info file(*.csv)")
 	batNum := orderCmd.Int("n", 1, "batch number")
 	algo := orderCmd.String("a", "1", "algo: 1,direct; 2,latency")
@@ -38,9 +38,9 @@ func SingleClient() {
 			err := orderCmd.Parse(args[1:])
 			if err == nil {
 				if *algo == "1" {
-					client.SendBasket(*direction, *input, *batNum, *handlInst)
+					client.SendBasket(*direction, *input, *batNum, *hsOrdType)
 				} else if *algo == "2" {
-					client.SendAlgo(*direction, *input, *batNum, *handlInst)
+					client.SendAlgo(*direction, *input, *batNum)
 				}
 			}
 		case "cancel", "c":
@@ -60,8 +60,7 @@ func SingleClient() {
 		}
 		// reset variable value
 		*direction = "1"
-		*handlInst = "1"
-		*input = "input/single.csv"
+		*hsOrdType = "dma"
 		*batNum = 1
 		*algo = "1"
 		*origOrdId = "-1"

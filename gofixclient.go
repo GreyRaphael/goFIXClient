@@ -98,13 +98,13 @@ func (e *TradeClient) FromApp(msg *quickfix.Message, sessionID quickfix.SessionI
 	return
 }
 
-func (e *TradeClient) SendOrder(direction string, secucode string, volume int32, price float64, handlInstType string) {
+func (e *TradeClient) SendOrder(direction string, secucode string, volume int32, price float64, handlInstType enum.HandlInst) {
 	e.requestId++
 	codeinfo := strings.Split(secucode, ".")
 	orderid := fmt.Sprintf("%d.%d", e.logonSeqNum, e.requestId)
 
-	ClOrdID := field.NewClOrdID(orderid)                          // time as orderid
-	HandInst := field.NewHandlInst(enum.HandlInst(handlInstType)) // "1":DMA; "2":DMA2; "3":CARE
+	ClOrdID := field.NewClOrdID(orderid)          // time as orderid
+	HandInst := field.NewHandlInst(handlInstType) // "1":DMA; "2":DMA2; "3":CARE
 	Symbol := field.NewSymbol(codeinfo[0])
 	Side := field.NewSide(enum.Side(direction)) // 1 buy, 2 sell
 	TransactionTime := field.NewTransactTime(time.Now())
@@ -117,6 +117,34 @@ func (e *TradeClient) SendOrder(direction string, secucode string, volume int32,
 	order.SetSecurityType(enum.SecurityType_COMMON_STOCK) // "CS"
 
 	order.SetSecurityExchange(codeinfo[1])
+	order.SetText("gewei order")
+
+	for sessId, accountId := range e.sessAccountMap {
+		order.SetAccount(accountId)
+		msg := order.ToMessage()
+		quickfix.SendToTarget(msg, sessId)
+	}
+}
+
+func (e *TradeClient) SendCARE(direction string, secucode string, volume int32) {
+	e.requestId++
+	codeinfo := strings.Split(secucode, ".")
+	orderid := fmt.Sprintf("%d.%d", e.logonSeqNum, e.requestId)
+
+	ClOrdID := field.NewClOrdID(orderid)                                       // time as orderid
+	HandInst := field.NewHandlInst(enum.HandlInst_MANUAL_ORDER_BEST_EXECUTION) // "1":DMA; "2":DMA2; "3":CARE
+	Symbol := field.NewSymbol(codeinfo[0])
+	Side := field.NewSide(enum.Side(direction)) // 1 buy, 2 sell
+	TransactionTime := field.NewTransactTime(time.Now())
+	OrdType := field.NewOrdType(enum.OrdType_MARKET) // "1"
+
+	order := newordersingle.New(ClOrdID, HandInst, Symbol, Side, TransactionTime, OrdType)
+	order.SetOrderQty(decimal.NewFromInt32(volume), 0)
+	order.SetCurrency("CNY")
+	order.SetSecurityType(enum.SecurityType_COMMON_STOCK) // "CS"
+
+	order.SetSecurityExchange(codeinfo[1])
+	order.SetText("gewei CARE")
 
 	for sessId, accountId := range e.sessAccountMap {
 		order.SetAccount(accountId)
@@ -135,7 +163,7 @@ type DSAConfig struct {
 	Change         float64
 }
 
-func (e *TradeClient) SendDSA(direction string, secucode string, volume int32, price float64, handlInstType string) {
+func (e *TradeClient) SendDSA(direction string, secucode string, volume int32) {
 	e.requestId++
 	codeinfo := strings.Split(secucode, ".")
 	orderid := fmt.Sprintf("%d.%d", e.logonSeqNum, e.requestId)
@@ -145,15 +173,15 @@ func (e *TradeClient) SendDSA(direction string, secucode string, volume int32, p
 	Symbol := field.NewSymbol(codeinfo[0])
 	Side := field.NewSide(enum.Side(direction)) // 1 buy, 2 sell
 	TransactionTime := field.NewTransactTime(time.Now())
-	OrdType := field.NewOrdType(enum.OrdType_LIMIT) // "2"
+	OrdType := field.NewOrdType(enum.OrdType_MARKET) // "1"
 
 	order := newordersingle.New(ClOrdID, HandInst, Symbol, Side, TransactionTime, OrdType)
 	order.SetOrderQty(decimal.NewFromInt32(volume), 0)
-	order.SetPrice(decimal.NewFromFloat(price), 2) // scale小数点后2位
 	order.SetCurrency("CNY")
 	order.SetSecurityType(enum.SecurityType_COMMON_STOCK) // "CS"
 
 	order.SetSecurityExchange(codeinfo[1])
+	order.SetText("gewei DSA")
 
 	// parse algo config file
 	algoBytes, _ := os.ReadFile("input/dsa.toml")
@@ -212,14 +240,21 @@ func (e *TradeClient) SendOrderList() {
 	}
 }
 
-func (e *TradeClient) SendBasket(direction string, filename string, batch_size int, handlInstType string) {
+func (e *TradeClient) SendBasket(direction string, filename string, batNum int, hsOrdType string) {
 	stocks := stock_utils.ReadCsv(filename, ',')
-	for i := 0; i < batch_size; i++ {
+	for i := 0; i < batNum; i++ {
 		for _, stock := range stocks {
-			if handlInstType != "4" {
-				e.SendOrder(direction, stock.Code, stock.Vol, stock.Price, handlInstType)
-			} else {
-				e.SendDSA(direction, stock.Code, stock.Vol, stock.Price, handlInstType)
+			switch hsOrdType {
+			case "care":
+				e.SendCARE(direction, stock.Code, stock.Vol)
+			case "dsa":
+				e.SendDSA(direction, stock.Code, stock.Vol)
+			case "dma":
+				e.SendOrder(direction, stock.Code, stock.Vol, stock.Price, "1")
+			case "dma2":
+				e.SendOrder(direction, stock.Code, stock.Vol, stock.Price, "2")
+			default:
+				fmt.Println("not support type")
 			}
 		}
 	}
@@ -289,11 +324,11 @@ func (e *TradeClient) Start() {
 	close(e.isLogon)
 }
 
-func (e *TradeClient) SendAlgo(direction string, filename string, batchSize int, handlInstType string) {
+func (e *TradeClient) SendAlgo(direction string, filename string, batNum int) {
 	stocks := stock_utils.ReadCsv(filename, ',')
-	for i := 0; i < batchSize; i++ {
+	for i := 0; i < batNum; i++ {
 		for _, stock := range stocks {
-			e.SendOrder(direction, stock.Code, stock.Vol, stock.Price, handlInstType)
+			e.SendOrder(direction, stock.Code, stock.Vol, stock.Price, "1")
 			time.Sleep(1 * time.Second)
 		}
 		e.CancelAll()
