@@ -12,6 +12,7 @@ func SingleClient() {
 	cfg := flag.String("c", "clients/test/local.cfg", "client config file")
 	flag.Parse()
 
+	fmt.Printf("Starting with config(-c): %s\n", *cfg)
 	client := TradeClient{ConfigFilename: *cfg}
 	client.Start()
 
