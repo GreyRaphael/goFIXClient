@@ -269,6 +269,7 @@ func (e *TradeClient) CancelOrder(origid string) {
 
 	cancel_req.SetSecurityExchange("SS")
 	cancel_req.SetOrderQty(decimal.NewFromInt32(100), 0)
+	cancel_req.SetText("gewei cancel")
 	// // useless tags
 	// cancel_req.SetField(quickfix.Tag(40), quickfix.FIXString("2")) // OrdType is "2"
 	// cancel_req.SetField(quickfix.Tag(44), quickfix.FIXFloat(100.12)) // Price is "2"
