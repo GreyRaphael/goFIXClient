@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"gofix/stock_utils"
 	"os"
@@ -16,6 +17,7 @@ import (
 	"github.com/quickfixgo/fix42/newordersingle"
 	"github.com/quickfixgo/fix42/ordercancelrequest"
 	"github.com/quickfixgo/quickfix"
+	"github.com/quickfixgo/tag"
 	"github.com/shopspring/decimal"
 )
 
@@ -29,6 +31,7 @@ type TradeClient struct {
 	logonSeqNum      int
 	senderAccountMap map[string]string
 	sessAccountMap   map[quickfix.SessionID]string
+	errDict          map[string]string
 }
 
 // OnCreate implemented as part of Application interface
@@ -40,6 +43,7 @@ func (e *TradeClient) OnCreate(sessionID quickfix.SessionID) {
 // OnLogon implemented as part of Application interface
 func (e *TradeClient) OnLogon(sessionID quickfix.SessionID) {
 	fmt.Printf("logon, SessionID=%s\n", sessionID)
+	e.errDict = ReadErrDict("errors.json")
 
 	for senderId, accountId := range e.senderAccountMap {
 		if strings.Contains(sessionID.String(), senderId) {
@@ -47,6 +51,18 @@ func (e *TradeClient) OnLogon(sessionID quickfix.SessionID) {
 		}
 	}
 	e.isLogon <- true
+}
+
+func ReadErrDict(filename string) map[string]string {
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		panic(err)
+	}
+	jsonData := make(map[string]string)
+	if err := json.Unmarshal(data, &jsonData); err != nil {
+		return nil
+	}
+	return jsonData
 }
 
 // OnLogout implemented as part of Application interface
@@ -94,8 +110,18 @@ func (e *TradeClient) ToApp(msg *quickfix.Message, sessionID quickfix.SessionID)
 
 // FromApp implemented as part of Application interface. This is the callback for all Application level messages from the counter party.
 func (e *TradeClient) FromApp(msg *quickfix.Message, sessionID quickfix.SessionID) (reject quickfix.MessageRejectError) {
-	fmt.Println("APP RECV: ", strings.ReplaceAll(msg.String(), string(rune(1)), "|"))
-	return
+	origMsg := strings.ReplaceAll(msg.String(), string(rune(1)), "|")
+	v, err := msg.MsgType()
+	switch v {
+	case "9":
+		txt, _ := msg.Body.GetString(tag.Text)
+		errorCode := txt[19 : len(txt)-1]
+		val := e.errDict[errorCode]
+		fmt.Printf("APP RECV: %s%s\n", origMsg, val)
+	default:
+		fmt.Println("APP RECV: ", origMsg)
+	}
+	return err
 }
 
 func (e *TradeClient) SendOrder(direction string, secucode string, volume int32, price float64, handlInstType enum.HandlInst) {
