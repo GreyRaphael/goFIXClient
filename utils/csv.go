@@ -1,4 +1,4 @@
-package stock_utils
+package utils
 
 import (
 	"encoding/csv"

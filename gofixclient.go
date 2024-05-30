@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"gofix/stock_utils"
+	"gofix/utils"
 	"os"
 	"regexp"
 	"strings"
@@ -267,7 +267,7 @@ func (e *TradeClient) SendOrderList() {
 }
 
 func (e *TradeClient) SendBasket(direction string, filename string, batNum int, hsOrdType string) {
-	stocks := stock_utils.ReadCsv(filename, ',')
+	stocks := utils.ReadCsv(filename, ',')
 	for i := 0; i < batNum; i++ {
 		for _, stock := range stocks {
 			switch hsOrdType {
@@ -352,7 +352,7 @@ func (e *TradeClient) Start() {
 }
 
 func (e *TradeClient) SendAlgo(direction string, filename string, batNum int) {
-	stocks := stock_utils.ReadCsv(filename, ',')
+	stocks := utils.ReadCsv(filename, ',')
 	for i := 0; i < batNum; i++ {
 		for _, stock := range stocks {
 			e.SendOrder(direction, stock.Code, stock.Vol, stock.Price, "1")
