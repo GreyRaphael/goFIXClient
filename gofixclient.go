@@ -41,7 +41,7 @@ func (e *TradeClient) OnCreate(sessionID quickfix.SessionID) {
 // OnLogon implemented as part of Application interface
 func (e *TradeClient) OnLogon(sessionID quickfix.SessionID) {
 	fmt.Printf("logon, SessionID=%s\n", sessionID)
-	e.errDict = utils.ReadErrDict("errors.json")
+	e.errDict = utils.ReadErrDict("config/errors.json")
 
 	for senderId, accountId := range e.senderAccountMap {
 		if strings.Contains(sessionID.String(), senderId) {
