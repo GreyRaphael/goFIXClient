@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"gofix/utils"
 	"os"
@@ -10,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pelletier/go-toml/v2"
 	"github.com/quickfixgo/enum"
 	"github.com/quickfixgo/field"
 	"github.com/quickfixgo/fix42/neworderlist"
@@ -43,7 +41,7 @@ func (e *TradeClient) OnCreate(sessionID quickfix.SessionID) {
 // OnLogon implemented as part of Application interface
 func (e *TradeClient) OnLogon(sessionID quickfix.SessionID) {
 	fmt.Printf("logon, SessionID=%s\n", sessionID)
-	e.errDict = ReadErrDict("errors.json")
+	e.errDict = utils.ReadErrDict("errors.json")
 
 	for senderId, accountId := range e.senderAccountMap {
 		if strings.Contains(sessionID.String(), senderId) {
@@ -51,18 +49,6 @@ func (e *TradeClient) OnLogon(sessionID quickfix.SessionID) {
 		}
 	}
 	e.isLogon <- true
-}
-
-func ReadErrDict(filename string) map[string]string {
-	data, err := os.ReadFile(filename)
-	if err != nil {
-		panic(err)
-	}
-	jsonData := make(map[string]string)
-	if err := json.Unmarshal(data, &jsonData); err != nil {
-		return nil
-	}
-	return jsonData
 }
 
 // OnLogout implemented as part of Application interface
@@ -179,16 +165,6 @@ func (e *TradeClient) SendCARE(direction string, secucode string, volume int32) 
 	}
 }
 
-type DSAConfig struct {
-	Name           string
-	Duration       int
-	MaxMarketShare float64
-	TradeStyle     int
-	PriceType      int
-	Unit           int
-	Change         float64
-}
-
 func (e *TradeClient) SendDSA(direction string, secucode string, volume int32) {
 	e.requestId++
 	codeinfo := strings.Split(secucode, ".")
@@ -210,12 +186,8 @@ func (e *TradeClient) SendDSA(direction string, secucode string, volume int32) {
 	order.SetText("gewei DSA")
 
 	// parse algo config file
-	algoBytes, _ := os.ReadFile("input/dsa.toml")
-	var algoCfg DSAConfig
-	err := toml.Unmarshal(algoBytes, &algoCfg)
-	if err != nil {
-		panic(err)
-	}
+	algoCfg := utils.ReadAlgoCfg("input/dsa.toml")
+
 	// algo parameters
 	order.SetField(6061, quickfix.FIXString(algoCfg.Name))
 	precision := quickfix.TimestampPrecision(time.Second)
