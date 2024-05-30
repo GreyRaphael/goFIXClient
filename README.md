@@ -12,6 +12,8 @@ build the program: `go build`
 
 build with smaller binary size: `go build -ldflags="-s -w"`
 
+build helper tool: `go build -o zz500down.exe -ldflags="-s -w" .\cmd\helper\`
+
 
 ## How to test
 
