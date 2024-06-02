@@ -9,12 +9,13 @@ import (
 	"os"
 )
 
-// headers strut
+// request headers strut
 type ReqHeaders struct {
 	UA     string `json:"User-Agent"`
 	Cookie string `json:"Cookie"`
 }
 
+// response text["result"]["data"] struct
 type Stock struct {
 	SECURITY_CODE string          `json:"SECURITY_CODE"`
 	F2            float64         `json:"f2"`
@@ -22,11 +23,13 @@ type Stock struct {
 	Volume        int32
 }
 
+// response text["result"] struct
 type EastResult struct {
 	Data []Stock         `json:"data"`
 	_    json.RawMessage `json:"-"`
 }
 
+// response text struct
 type Txt struct {
 	Version string          `json:"version"`
 	Result  EastResult      `json:"result"`
